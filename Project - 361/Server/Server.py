@@ -138,7 +138,17 @@ def server():
 
                 # Server sends the encrypted menu to the client
                 connectionSocket.send(encMenu)
-
+		
+		#initalizing empty lindex list for inbox
+                inboxList = []
+                #Get relative path to the current client's inbox
+                inboxPath = os.path.dirname(os.path.abspath(__file__)) + "/" + userName
+                inboxList = filter(lambda x: os.path.isfile(os.path.join(inboxPath, x)), os.listdir(inboxPath))
+                 
+                #Now sort the inbox based on creation time
+                inboxList = sorted(inboxList, key = lambda x: os.path.getmtime(os.path.join(inboxPath, x)))
+                inboxList.reverse() #reverse list since it is sorted by oldest to newest
+                
                 # Menu Loop
                 while 1:
 
@@ -147,6 +157,7 @@ def server():
 
                     # Server decrypts the choice
                     choice = unpad(cipher_sym.decrypt(encChoice), 16).decode('ascii')
+                    print(choice)
 
                     # If client chooses the sending email subprotocol
                     if choice == "1":
@@ -158,14 +169,88 @@ def server():
                     # If client chooses the viewing inbox subprotocol
                     elif choice == "2":
                         print("Viewing inbox subprotocol") # TEMPORARY
+                        #update the inbox for any new emails
+                        inboxPath = os.path.dirname(os.path.abspath(__file__)) + "/" + userName
+                        inboxList = filter(lambda x: os.path.isfile(os.path.join(inboxPath, x)), os.listdir(inboxPath))
+                        #Now sort the inbox based on creation time
+                        inboxList = sorted(inboxList, key = lambda x: os.path.getmtime(os.path.join(inboxPath, x)))
+                        inboxList.reverse() #reverse list since it is sorted by oldest to newest
 
-                        continue
+                        
+                        #FOR LOOP that iterates through the inbox and formats the index list
+                        sendIndex = "Index\tFrom\t\tDateTime\t\t\tTitle\n"
+                        for file_name in inboxList:
+                        #Get the path of the files
+                         file_path = os.path.join(inboxPath, file_name)
+                         #split file name into sender and title
+                         sender = file_name.split("_")
+                                                  
+                         #get the file's creation time
+                         c_time = os.path.getctime(file_path)
+                         
+                         #Create the timestamp and index in the list
+                         timestamp_str = str(datetime.fromtimestamp(c_time))
+                         index = str(inboxList.index(file_name) + 1) + ".     "
+                         
+                         # create each line of the interface for each email in the inbox
+                         line = index + "\t" + sender[0] + "\t\t" + timestamp_str + "\t" + file_name.split("_")[1].removesuffix(".txt") + "\n"
+                         sendIndex = sendIndex + line
+                        
+                        #Outside the for loop, send the encrpyted index and receive and OK from client   
+                                           
+                        encIndex = cipher_sym.encrypt(pad(sendIndex.encode('ascii'), 16))
+                        connectionSocket.send(encIndex)
+                        OK = connectionSocket.recv(2048)
+                        continue                
 
 
                     # If client chooses the viewing email subprotocol
                     elif choice == "3":
                        print("Viewing email subprotocol") # TEMPORARY
+                       message = "the server request email index"
+                       encMessage = cipher_sym.encrypt(pad(message.encode('ascii'), 16))
+                       connectionSocket.send(encMessage)
+                       
+                       encDecide = connectionSocket.recv(2048)
+                       decide = unpad(cipher_sym.decrypt(encDecide), 16).decode('ascii')
+                       
+                       if decide.isdigit():
+                        #shift index by 1 since list starts at 0
+                        index = int(decide) - 1
+                       
+                        #check if client's choice is in inbox/ inbox list has been generated
+                        if index in range(len(inboxList)):
+                       	 encYes = cipher_sym.encrypt(pad("YES".encode('ascii'), 16))
+                       	 connectionSocket.send(encYes)
+                       	 ok = connectionSocket.recv(2048)
+                       
+                       	 #Retrieve the directory of the client and the designated file
+                       	 inbox_path = os.path.dirname(os.path.abspath(__file__)) + "/" +userName
+                       	 file_path = os.path.join(inbox_path, inboxList[index])
 
+                       	 #Get the contents of the email
+                       	 with open(file_path, 'rb') as f:
+                       		 file_data  = f.read()
+                       		
+                       	 f.close()
+                       	
+                       	 #encrypt the file data and send it to the client
+                       	 encEmail = cipher_sym.encrypt(pad(file_data, 16))
+
+                       	 connectionSocket.sendall(encEmail)
+                       	 connectionSocket.send(b"<END>")
+                       	          	
+                       	
+                        else:
+                        
+                       	 encNo = cipher_sym.encrypt(pad("NO".encode('ascii'), 16))
+                       	 connectionSocket.send(encNo)
+                       	 ok = connectionSocket.recv(2048)
+                       	 
+                       else:
+                       	 encNo = cipher_sym.encrypt(pad("NO".encode('ascii'), 16))
+                       	 connectionSocket.send(encNo)
+                       	 ok = connectionSocket.recv(2048)
                        continue
 
                     # If client chooses to terminate the connection

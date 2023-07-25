@@ -131,13 +131,64 @@ def client():
                 # If client chooses the viewing inbox subprotocol
                 elif choice == '2':
                     print("Viewing inbox subprotocol") # TEMPORARY
-
+                    #receive the index list, decrypt it, and print it to the client
+                    encIndex = clientSocket.recv(2048)                  
+           
+                    index = unpad(cipher_sym.decrypt(encIndex), 16).decode('ascii')
+                    print(index)
+                    
+                    #reply to server with OK
+                    OK = cipher_sym.encrypt(pad("OK".encode('ascii'), 16))
+                    clientSocket.send(OK)
                     continue
 
                 # If client chooses the viewing email subprotocol
                 elif choice == '3':
                     print("Viewing email subprotocol") # TEMPORARY
+                    #receive encrypted message from server
+                    encMessage = clientSocket.recv(2048)
+                    message = unpad(cipher_sym.decrypt(encMessage), 16).decode('ascii')                    
+                    
+                    #receive client's choice of index to view
+                    view = "Enter the email index you wish to view: "
+                    decide = input(view).strip()
+                    
+                    encDecide = cipher_sym.encrypt(pad(decide.encode('ascii'), 16))
+                    clientSocket.send(encDecide)
 
+                    
+                    #get server response
+                    encResponse = clientSocket.recv(1024)
+                    response = unpad(cipher_sym.decrypt(encResponse), 16).decode('ascii')
+                    OK = cipher_sym.encrypt(pad("HERE".encode('ascii'), 16))
+                    clientSocket.send(OK)
+                    
+                    #email index was found
+                    #Retrieve file contents
+                    if response == "YES":
+                    
+                     done = False
+                     file_bytes = b""
+                    
+                     while not done:
+                      data = clientSocket.recv(2048)
+                      file_bytes += data
+
+                      if file_bytes[-5:] == b"<END>":
+
+                       done = True
+                    
+                     file_contents = unpad(cipher_sym.decrypt(file_bytes[:-5]), 16).decode('ascii')
+                     print(file_contents)
+                    
+                    
+                    
+                    #email index was not found
+                    
+                    elif response == "NO":
+                     print("Cannot find email with index " + decide + ". Please check the inbox")
+                     
+                     
                     continue
 
                 # If client chooses to terminate the connection
