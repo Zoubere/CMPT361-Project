@@ -1,5 +1,6 @@
 import socket
 import sys
+import os
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from Crypto.PublicKey import RSA
@@ -124,7 +125,55 @@ def client():
                 
                 # If client chooses the sending email subprotocol
                 if choice == '1':
-                    print("Sending email subprotocol") # TEMPORARY
+                    #print("Sending email subprotocol") # TEMPORARY
+
+                    # Client receives the encrypted email message request
+                    encEmailMessage = clientSocket.recv(2048)
+                    emailMessage = unpad(cipher_sym.decrypt(encEmailMessage), 16).decode('ascii')
+
+                    # Client sends the email destination client's username(s) 
+                    if emailMessage == "Send the email":
+                        destination = input("Enter destinations (separated by ;): ")
+
+                        # Client enters the title of the email message
+                        title = input("Enter title: ")
+
+                        # Client enters the content of the email through terminal or txt file
+                        contentMessage = input("Would you like to load contents from a file?(Y/N) ").upper()
+                        if contentMessage == "Y":
+                            file = input("Enter filename: ")
+                            if os.path.isfile(file):
+                                with open(file, 'r') as f:
+                                    content = f.read()
+                            else:
+                                print(f"The {file} file does not exist in the current directory")
+                        else:
+                            content = input("Enter message contents: ")
+
+                        # Title and content length exceed maximum character check
+                        contentLength = len(content)
+                        titleLength = len(title)
+                        if contentLength > 1000000 or titleLength > 100:
+                            email = "Invalid email"
+                            encEmail = cipher_sym.encrypt(pad(choice.encode('ascii'), 16))
+                            clientSocket.send(encEmail)
+                            if titleLength > 100:
+                                print("Title exceeds maximum length of 100 charachters email could not be sent")
+                            else:
+                                print("Content exceeds maximum length of 1000000 charachters email could not be sent")
+                            continue
+                        # Formats the email 
+
+                        email = f"From:{userName}\n"
+                        email += f"To:{destination}\n"
+                        email += f"Title:{title}\n"
+                        email += f"Content Length:{contentLength}\n"
+                        email += f"Content:\n{content}"
+
+                        # Send formatted and encrypted email to server
+                        encEmail = cipher_sym.encrypt(pad(email.encode('ascii'), 16))
+                        clientSocket.send(encEmail)
+                        print("The message is sent to the server.")
 
                     continue
 
