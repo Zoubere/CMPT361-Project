@@ -161,8 +161,49 @@ def server():
 
                     # If client chooses the sending email subprotocol
                     if choice == "1":
-                        print("Sending email subprotocol") # TEMPORARY
+                        #print("Sending email subprotocol") # TEMPORARY
 
+                        # Begins email subprotocol by requesting email from client
+                        emailMessage = "Send the email"
+                        encEmailMessage = cipher_sym.encrypt(pad(emailMessage.encode('ascii'),16))
+                        connectionSocket.send(encEmailMessage)
+
+                        # Receives email from client
+                        encEmail = connectionSocket.recv(2048)
+                        email = unpad(cipher_sym.decrypt(encEmail), 16).decode('ascii')
+                        if email == "Invalid email":
+                            print("Invalid email received from client. Content or title exceed maximum length")
+                            continue
+
+                        # Prints Server message
+                        emailFormat = email.split("\n")
+                        serverMessage = f"An email from {emailFormat[0].split(':')[1]} "
+                        serverMessage += f"is sent to {emailFormat[1].split(':')[1]} "
+                        serverMessage += f"has a content length of {emailFormat[3].split(':')[1]}."
+                        print(serverMessage)
+
+                        # Saves time of email reception and appends it to email
+                        emailTime = str(datetime.now())
+                        emailFormat.insert(2,emailTime)
+                        email = "\n".join(emailFormat)
+
+                        # Save email as a text file under appropriate directory
+                        clientList = emailFormat[1].split(':')[1].split(";") # ex: To:client2;client3 -> [client2, client3]
+
+                        for client in clientList:
+                            filename = client + "_" + emailFormat[3].split(':')[1]
+                            # Uses relative path to save file from Server directory to Client directory
+                            relativePath = f"./{client}/{filename}"
+                            absPath = os.path.abspath(relativePath)
+                            #print(f" File written to {absPath}")
+
+
+                            try:
+                                with open(absPath, 'w') as f:
+                                    f.write(email)
+
+                            except: 
+                                print("File failed to be written")
                         continue
 
 
