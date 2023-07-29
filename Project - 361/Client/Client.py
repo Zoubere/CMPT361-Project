@@ -155,7 +155,7 @@ def client():
                         titleLength = len(title)
                         if contentLength > 1000000 or titleLength > 100:
                             email = "Invalid email"
-                            encEmail = cipher_sym.encrypt(pad(choice.encode('ascii'), 16))
+                            encEmail = cipher_sym.encrypt(pad(email.encode('ascii'), 16))
                             clientSocket.send(encEmail)
                             if titleLength > 100:
                                 print("Title exceeds maximum length of 100 charachters email could not be sent")
@@ -170,9 +170,12 @@ def client():
                         email += f"Content Length:{contentLength}\n"
                         email += f"Content:\n{content}"
 
-                        # Send formatted and encrypted email to server
+                        # Send size of email and email to server
                         encEmail = cipher_sym.encrypt(pad(email.encode('ascii'), 16))
-                        clientSocket.send(encEmail)
+                        encEmailSize = cipher_sym.encrypt(pad(str(len(encEmail)).encode('ascii'), 16))
+                        clientSocket.send(encEmailSize)
+                        clientSocket.sendall(encEmail)
+
                         print("The message is sent to the server.")
 
                     continue

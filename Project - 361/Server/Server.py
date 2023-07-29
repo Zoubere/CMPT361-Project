@@ -168,8 +168,21 @@ def server():
                         encEmailMessage = cipher_sym.encrypt(pad(emailMessage.encode('ascii'),16))
                         connectionSocket.send(encEmailMessage)
 
-                        # Receives email from client
-                        encEmail = connectionSocket.recv(2048)
+                        # Receives email size from client
+                        encEmailSize = connectionSocket.recv(2048)
+                        emailSize = int(unpad(cipher_sym.decrypt(encEmailSize), 16).decode('ascii'))
+                        print(emailSize)
+
+                        # Server loop to receive email from client
+                        bytestream = 0
+                        encEmail = b''
+
+                        while bytestream < emailSize:
+
+                            encEmail += connectionSocket.recv(2048)
+                            bytestream += len(encEmail)
+
+                        # decrypt fully received email
                         email = unpad(cipher_sym.decrypt(encEmail), 16).decode('ascii')
                         if email == "Invalid email":
                             print("Invalid email received from client. Content or title exceed maximum length")
