@@ -1,3 +1,13 @@
+""" 
+Client Program for Secure Mail Transfer System
+
+This module connects to the server program and allows the
+client user to send and view emails in their inbox on their
+account.
+
+authors: Mark Said, Nicholas Bao, Zoubere Yusuf
+"""
+
 import socket
 import sys
 import os
@@ -6,7 +16,19 @@ from Crypto.Util.Padding import pad, unpad
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP
 
+'''
+This function activates the client program that connects
+to the server program and communicates back and forth to
+access and manage the secure mail transfer system.
+
+Parameters: 
+None
+
+Returns:
+None
+'''
 def client():
+    
     # Server Information (Prompts the user)
     serverName = input("Enter the server host name or IP: ").strip()
     serverPort = 13000
@@ -125,7 +147,6 @@ def client():
                 
                 # If client chooses the sending email subprotocol
                 if choice == '1':
-                    #print("Sending email subprotocol") # TEMPORARY
 
                     # Client receives the encrypted email message request
                     encEmailMessage = clientSocket.recv(2048)
@@ -135,111 +156,127 @@ def client():
                     if emailMessage == "Send the email":
                         destination = input("Enter destinations (separated by ;): ")
 
-                        # Client enters the title of the email message
-                        title = input("Enter title: ")
+                        # Title validation loop
+                        while 1:
 
-                        # Client enters the content of the email through terminal or txt file
-                        contentMessage = input("Would you like to load contents from a file?(Y/N) ").upper()
-                        if contentMessage == "Y":
-                            file = input("Enter filename: ")
-                            if os.path.isfile(file):
-                                with open(file, 'r') as f:
-                                    content = f.read()
-                            else:
-                                print(f"The {file} file does not exist in the current directory")
-                        else:
-                            content = input("Enter message contents: ")
+                            # Client enters the title of the email message
+                            title = input("Enter title: ")
 
-                        # Title and content length exceed maximum character check
-                        contentLength = len(content)
-                        titleLength = len(title)
-                        if contentLength > 1000000 or titleLength > 100:
-                            email = "Invalid email"
-                            encEmail = cipher_sym.encrypt(pad(email.encode('ascii'), 16))
-                            clientSocket.send(encEmail)
-                            if titleLength > 100:
-                                print("Title exceeds maximum length of 100 charachters email could not be sent")
+                            # If the title is too long, it goes back through the loop
+                            if len(title) > 100:
+                                print("Title exceeds maximum length of 100 characters. Please try again.")
+                                continue
+
+                            # Title is accepted, break out of the loop
+                            break
+
+                        # Content validation loop
+                        while 1:
+
+                            # Client enters the content of the email through terminal or txt file
+                            contentMessage = input("Would you like to load contents from a file?(Y/N) ").upper()
+                            
+                            # If the client wants to load content through a file
+                            if contentMessage == "Y":
+                                file = input("Enter filename: ")
+                                
+                                # Check if file exists
+                                if os.path.isfile(file):
+                                    with open(file, 'r') as f:
+                                        content = f.read()
+
+                                        # If the content is too long, it goes back through the loop
+                                        if len(content) > 1000000:
+                                            print("Content exceeds maximum length of 1000000 characters. Please try again.")
+                                            continue
+                                
+                                # File does not exist
+                                else:
+                                    print(f"The {file} file does not exist in the current directory. Please try again.")
+                                    continue
+                            
+                            # Client wants to enter message content
                             else:
-                                print("Content exceeds maximum length of 1000000 charachters email could not be sent")
-                            continue
+                                content = input("Enter message contents: ")
+
+                                # If the content is too long, it goes back through the loop
+                                if len(content) > 1000000:
+                                    print("Content exceeds maximum length of 1000000 characters. Please try again.")
+                                    continue
+                            
+                            break
+                        
                         # Formats the email 
-
                         email = f"From:{userName}\n"
                         email += f"To:{destination}\n"
                         email += f"Title:{title}\n"
-                        email += f"Content Length:{contentLength}\n"
+                        email += f"Content Length:{len(content)}\n"
                         email += f"Content:\n{content}"
 
                         # Send size of email and email to server
                         encEmail = cipher_sym.encrypt(pad(email.encode('ascii'), 16))
-                        encEmailSize = cipher_sym.encrypt(pad(str(len(encEmail)).encode('ascii'), 16))
+                        encEmailSize = cipher_sym.encrypt(pad(str(len(email)).encode('ascii'), 16))
                         clientSocket.send(encEmailSize)
                         clientSocket.sendall(encEmail)
-
                         print("The message is sent to the server.")
 
                     continue
 
                 # If client chooses the viewing inbox subprotocol
                 elif choice == '2':
-                    print("Viewing inbox subprotocol") # TEMPORARY
-                    #receive the index list, decrypt it, and print it to the client
+                    
+                    # Receive the index list, decrypt it, and print it to the client
                     encIndex = clientSocket.recv(2048)                  
            
                     index = unpad(cipher_sym.decrypt(encIndex), 16).decode('ascii')
                     print(index)
                     
-                    #reply to server with OK
+                    # Reply to server with OK
                     OK = cipher_sym.encrypt(pad("OK".encode('ascii'), 16))
                     clientSocket.send(OK)
                     continue
 
                 # If client chooses the viewing email subprotocol
                 elif choice == '3':
-                    print("Viewing email subprotocol") # TEMPORARY
-                    #receive encrypted message from server
+                    
+                    # Receive encrypted message from server
                     encMessage = clientSocket.recv(2048)
                     message = unpad(cipher_sym.decrypt(encMessage), 16).decode('ascii')                    
                     
-                    #receive client's choice of index to view
+                    # Receive client's choice of index to view
                     view = "Enter the email index you wish to view: "
                     decide = input(view).strip()
                     
+                    # Client sends client's index decision to the server
                     encDecide = cipher_sym.encrypt(pad(decide.encode('ascii'), 16))
                     clientSocket.send(encDecide)
-
                     
-                    #get server response
+                    # Get server response
                     encResponse = clientSocket.recv(1024)
                     response = unpad(cipher_sym.decrypt(encResponse), 16).decode('ascii')
                     OK = cipher_sym.encrypt(pad("HERE".encode('ascii'), 16))
                     clientSocket.send(OK)
                     
-                    #email index was found
-                    #Retrieve file contents
+                    # Email index was found
+                    # Retrieve file contents
                     if response == "YES":
-                    
-                     done = False
-                     file_bytes = b""
-                    
-                     while not done:
-                      data = clientSocket.recv(2048)
-                      file_bytes += data
+                        
+                        done = False
+                        file_bytes = b""
+                        
+                        while not done:
+                            data = clientSocket.recv(2048)
+                            file_bytes += data
 
-                      if file_bytes[-5:] == b"<END>":
-
-                       done = True
+                            if file_bytes[-5:] == b"<END>":
+                                done = True
                     
-                     file_contents = unpad(cipher_sym.decrypt(file_bytes[:-5]), 16).decode('ascii')
-                     print(file_contents)
+                        file_contents = unpad(cipher_sym.decrypt(file_bytes[:-5]), 16).decode('ascii')
+                        print(file_contents + '\n')
                     
-                    
-                    
-                    #email index was not found
-                    
+                    # Email index was not found  
                     elif response == "NO":
-                     print("Cannot find email with index " + decide + ". Please check the inbox")
-                     
+                        print("Cannot find email with index " + decide + ". Please check the inbox")
                      
                     continue
 
