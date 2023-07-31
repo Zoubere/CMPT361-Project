@@ -271,7 +271,7 @@ def server():
                             index = str(inboxList.index(file_name) + 1) + ".     "
                             
                             # Create each line of the interface for each email in the inbox
-                            line = index + "\t" + sender[0] + "\t\t" + timestamp_str + "\t" + file_name.split("_")[1].removesuffix(".txt") + "\n"
+                            line = index + "\t" + sender[0] + "\t\t" + timestamp_str + "\t" + file_name.split("_")[1][:-4] + "\n"
                             sendIndex = sendIndex + line
                         
                         # Outside the for loop, send the encrpyted index and receive and OK from client                  
