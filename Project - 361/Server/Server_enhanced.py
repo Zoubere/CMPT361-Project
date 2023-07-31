@@ -268,8 +268,9 @@ def server():
                         encEmail = b''
 
                         while bytestream < emailSize:
-                            encEmail += connectionSocket.recv(2048)
-                            bytestream += len(encEmail)
+                            data = connectionSocket.recv(2048)
+			    encEmail += data
+                            bytestream += len(data)
 
                         # Decrypt fully received email
                         email = unpad(cipher_sym.decrypt(encEmail), 16).decode('ascii')
