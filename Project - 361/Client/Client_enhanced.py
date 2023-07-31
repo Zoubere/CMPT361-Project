@@ -277,9 +277,9 @@ def client():
                         email += f"Content:\n{content}"
 
                         # Send size of email and email to server
-                        encEmail = cipher_sym.encrypt(pad(email.encode('ascii'), 16))
                         encEmailSize = cipher_sym.encrypt(pad(str(len(email)).encode('ascii'), 16))
                         clientSocket.send(encEmailSize)
+                        encEmail = cipher_sym.encrypt(pad(email.encode('ascii'), 16))
                         clientSocket.sendall(encEmail)
                         print("The message is sent to the server.")
 
